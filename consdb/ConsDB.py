@@ -451,6 +451,7 @@ def join_vcfs(fns, fn_out):
 
     # Get meta information
     header_lines = []
+    filedate = False
     for fn in fns:
         for line in open(fn, 'r'):
             line = line.strip()
@@ -458,6 +459,10 @@ def join_vcfs(fns, fn_out):
                 break
 
             if line not in header_lines:
+                if 'fileDate' in line:
+                    if filedate:
+                        continue
+                    filedate = True
                 header_lines.append(line)
 
     # Get header line
@@ -1112,6 +1117,7 @@ def main():
         if args.inp_type == 'file':
             rse.RSCollection.merge_files(args.i, args.o)
         else:
+            args.i = args.i[0]
             if args.mp:
                 nproc = min(mp.cpu_count(), args.mp_proc, len(chrs))
                 with mp.Pool(nproc) as pool:
@@ -1136,7 +1142,8 @@ def main():
         if args.inp_type == 'file':
             fns = args.i
         else:
-            os.path.listdir(args.i)
+            args.i = args.i[0]
+            os.listdir(args.i)
 
             if args.pop is None:
                 fns = []
