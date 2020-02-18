@@ -185,16 +185,28 @@ def col_from_db(db, chrs, fp='.', chr_path=None, chr_maj=False, chr_all=False,
 
     return(rsc)
 
-def filter_vcf_pers(fn_in, fn_out, pers_id, homoz=True):
+def filter_vcf_pers(fn_in, fn_out, pers_id, het=None):
     """
     Filter a VCF file for a given individual.
+    Possible choices for het are:
+    * 'rand': Randomly pick a haplotype at each position
+    * [0,1]: Choose either left or right haplotype at each position
 
     Parameters:
     fn_in: VCF file to filter
     fn_out: Output filename
     pers_id: ID of the individual to filter
-    homoz: Only take homozygous variants
+    het: How to handle heterozygous variants
     """
+
+    try:
+        het = int(het)
+    except ValueError:
+        het = het.lower()
+
+    if het not in {'rand', 0, 1}:
+        raise ValueError(f'Bad option for het: {het}')
+
     
     samp_idx = None
     pos_set = set()
@@ -242,7 +254,10 @@ def filter_vcf_pers(fn_in, fn_out, pers_id, homoz=True):
                 continue
 
             gt = re.split(r'[|/]', line[-1])
-            if (len(np.unique(gt)) == 1 and gt[0] != '0') or not homoz:
+            if (len(np.unique(gt)) == 1):
+                if gt[0] == '0':
+                    continue
+
                 pos_set.add(tuple(line[:2]))
 
                 # Need to adjust alt index (0 is ref in VCF files)
@@ -253,7 +268,39 @@ def filter_vcf_pers(fn_in, fn_out, pers_id, homoz=True):
 
                 line = '\t'.join(line)
                 fp.write(f'{line}\n')
+            elif het == 'rand':
+                gt = np.random.choice([0,1])
+                if gt == 0:
+                    continue
 
+                pos_set.add(tuple(line[:2]))
+
+                # Need to adjust alt index (0 is ref in VCF files)
+                line[4] = rec_alts[gt-1]
+                line[7] = ';'.join([f'{k}={v[gt-1]}' if type(v) is list \
+                    else (f'{k}={v}' if v != 0 else k) \
+                    for k,v in rec_info.items()])
+
+                line = '\t'.join(line)
+                fp.write(f'{line}\n')
+            elif type(het) == int:
+                try:
+                    gt = int(gt[het])
+                except IndexError:
+                    raise ValueError(f'Bad argument for het: {het}.')
+                if gt == 0:
+                    continue
+
+                pos_set.add(tuple(line[:2]))
+
+                # Need to adjust alt index (0 is ref in VCF files)
+                line[4] = rec_alts[gt-1]
+                line[7] = ';'.join([f'{k}={v[gt-1]}' if type(v) is list \
+                    else (f'{k}={v}' if v != 0 else k) \
+                    for k,v in rec_info.items()])
+
+                line = '\t'.join(line)
+                fp.write(f'{line}\n')
 
 def find_rsid_frags(c, fp_in, fns, vcf=True):
     """
@@ -879,6 +926,8 @@ def get_args():
             help='Directory containing ConsDB files.')
         parser.add_argument('-pop', help='Population to use for filtering.')
         parser.add_argument('-samp', help='Sample ID to use for filtering.')
+        parser.add_argument('-het',
+            help='Option for handling heterozygous variants.')
         parser.add_argument('-log', help='Log file to use for filtering.')
         parser.add_argument('-cons', action='store_true', help=('Making a '
             'consenus so only keep first major allele at each position.'))
@@ -1132,7 +1181,7 @@ def main():
     ## Filter VCF file
     if run_mode == 'filter':
         if args.samp:
-            filter_vcf_pers(args.i, args.o, args.samp)
+            filter_vcf_pers(args.i, args.o, args.samp, args.het)
         else:
             srsc.BitRSCollection.filter_vcf(args.consdb_path, args.i, args.o,
                 args.pop, args.log, args.cons, args.keep_samps, args.quiet)
