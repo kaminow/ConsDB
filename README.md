@@ -1,4 +1,4 @@
-# ConsDB
+0;136;0c# ConsDB
 A Python tool for interfacing with large variant databases and performing consensus genome operations.
 
 Written by Benjamin Kaminow
@@ -14,6 +14,7 @@ Where `<run mode>` is one of the following:
 *  `Filter` - Filter a VCF file to remove major alleles
 *  `Merge` - Merge multiple ConsDB files
 *  `Cons` - Create a consensus VCF file
+*  `FA` - Create a consensus FASTA file
 
 Arguments for each run mode can be viewed by passing `-h` as the sole argument.
 

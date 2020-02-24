@@ -1891,6 +1891,11 @@ class RSCollection:
         line_split: List consisting of ['rsid,chrom,pos', 'rest of line']
         """
 
+        try:
+            line_split = line_split.split(':')
+        except AttributeError:
+            pass
+
         rsid, chrom, pos = line_split[0].split(',')
         chrom = RSCollection.chrom_to_int(chrom)
         pos = int(pos)

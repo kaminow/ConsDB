@@ -21,6 +21,35 @@ import urllib.request
 # List of all chromosomes
 CHRS = [str(i) for i in range(1,23)] + ['X', 'Y', 'MT']
 
+def check_consdb_sorted(fn):
+    """
+    Helper function to check if a ConsDB file is sorted by position.
+
+    Parameters:
+    fn: File to check
+    """
+
+    chrom = 0
+    cur = 0
+    for line in rse.RSCollection.open(fn):
+        try:
+            line = line.decode()
+        except AttributeError:
+            pass
+
+        c, p = re.split('[:,]', line)[1:3]
+        c = rse.RSCollection.chrom_to_int(c)
+        p = int(p)
+
+        if c > chrom:
+            chrom = c
+            cur = 0
+        if p < cur or c < chrom:
+            return(False)
+        cur = p
+
+    return(True)
+
 def check_downloads(db, chrs, fp='.', force=False):
     """
     Function to download all necessary database files. Valid databases are:
@@ -184,6 +213,95 @@ def col_from_db(db, chrs, fp='.', chr_path=None, chr_maj=False, chr_all=False,
                 print(f'Chromosome {c} major alleles saved.', flush=True)
 
     return(rsc)
+
+def consdb_to_fasta(consdb_fn, in_fa, out_fa):
+    if check_consdb_sorted(consdb_fn):
+        lines = rse.RSCollection.open(consdb_fn)
+    else:
+        print((f'WARNING: File {consdb_fn} is not sorted, this operation may '
+            'take a lot of time/RAM. Consider pre-sorting.'))
+
+        lines = sorted([line.decode() if type(line) == bytes else line \
+            for line in rse.RSCollection.open(consdb_fn)],
+            key=rse.RSCollection.sort_rsidx_line)
+
+    ## Load original genome
+    orig_gen, chr_header = load_genome(in_fa)
+
+    ## Go through ConsDB file and create new genome
+    new_gen = {}
+    gen_ctr = {c: 0 for c in orig_gen.keys()}
+    for line in lines:
+        try:
+            line = line.decode()
+        except AttributeError:
+            pass
+
+        if line[0] == '#':
+            continue
+
+        line = re.split('[:,]', line.strip())
+        chrom = line[1]
+        pos = int(line[2]) - 1
+        rec_ref = line[3]
+        rec_alt = line[4]
+
+        # Make sure that we have a reference genome for this chromosome
+        try:
+            g = orig_gen[chrom]
+        except KeyError:
+            print(f'No reference found for chr{chrom}, skipping variants.')
+            orig_gen[chrom] = None
+            continue
+        if g is None:
+            continue
+
+        if pos >= len(g):
+            continue
+
+        if gen_ctr[chrom] > pos:
+            print((f'Skipping variant '
+                f'{line[1]}\t{line[2]}\t{line[3]}\t{line[4]}, overlapped by '
+                'prior variant.'))
+            continue
+
+        try:
+            n = new_gen[chrom]
+        except KeyError:
+            n = new_gen[chrom] = []
+
+        if g[pos:pos+len(rec_ref)] != rec_ref:
+            raise AssertionError(('Reference genome and VCF file disagree at '
+                f'{line[1]} {line[2]} (ref: {g[pos:len(rec_ref)]}, '
+                f'vcf: {rec_ref}).'))
+
+        n.append(g[gen_ctr[chrom]:pos])
+        n.append(rec_alt)
+        gen_ctr[chrom] = pos + len(rec_ref)
+
+    ## Print new genome
+    with open(out_fa, 'w') as fp:
+        for c in CHRS:
+            try:
+                g = new_gen[c]
+                if gen_ctr[c] < len(orig_gen[c]):
+                    g.append(orig_gen[c][gen_ctr[c]:])
+            except KeyError:
+                if c in orig_gen and orig_gen[c]:
+                    g = orig_gen[c]
+                else:
+                    continue
+
+
+            fp.write(chr_header[c])
+            g = ''.join(g)
+            for i in range(0, len(g), 70):
+                fp.write(f'{g[i:i+70]}\n')
+
+    try:
+        lines.close()
+    except AttributeError:
+        pass
 
 def filter_vcf_pers(fn_in, fn_out, pers_id, het=None):
     """
@@ -528,6 +646,33 @@ def join_vcfs(fns, fn_out):
 
                 fp_out.write(line)
 
+def load_genome(gen_fn):
+    """
+    Load a genome from a FASTA file. Returns a dictionary of chrom -> DNA seq
+    and a dictionary of chromosome headers.
+
+    Parameters:
+    gen_fn: Genome file
+    """
+
+    orig_gen = {}
+    chr_header = {}
+    chrom = ''
+    for line in open(gen_fn, 'r'):
+        if line[0] == '>':
+            if chrom != '':
+                orig_gen[chrom] = ''.join(orig_gen[chrom])
+
+            chrom = line.split()[0].strip('>chr')
+            chr_header[chrom] = line
+            orig_gen[chrom] = []
+            continue
+
+        orig_gen[chrom].append(line.strip())
+    orig_gen[chrom] = ''.join(orig_gen[chrom])
+
+    return(orig_gen, chr_header)
+
 def make_cons_vcf(fn_in, fn_out, pop=None, quiet=True):
     """
     Make a consensus VCF file using the BitRSCollection class.
@@ -832,6 +977,78 @@ def queue_wrap(q, func, *args, **kwargs):
 
     return(res)
 
+def vcf_to_fasta(vcf_fn, in_fa, out_fa):
+    ## Load original genome
+    orig_gen, chr_header = load_genome(in_fa)
+
+    ## Go through VCF file and create new genome
+    new_gen = {}
+    gen_ctr = {c: 0 for c in orig_gen.keys()}
+    for line in open(vcf_fn, 'r'):
+        if line[0] == '#':
+            continue
+
+        line = line.strip().split('\t')
+        chrom = line[0].strip('chr')
+        pos = int(line[1]) - 1
+        rec_ref = line[3]
+        # If multiple alts, just take the first one
+        rec_alt = line[4].split(',')[0]
+
+        # Make sure that we have a reference genome for this chromosome
+        try:
+            g = orig_gen[chrom]
+        except KeyError:
+            print(f'No reference found for chr{chrom}, skipping variants.')
+            orig_gen[chrom] = None
+            continue
+        if g is None:
+            continue
+
+        if pos >= len(g):
+            continue
+
+        if gen_ctr[chrom] > pos:
+            print((f'Skipping variant '
+                f'{line[0]}\t{line[1]}\t{line[3]}\t{line[4]}, overlapped by '
+                'prior variant.'))
+            continue
+
+        try:
+            n = new_gen[chrom]
+        except KeyError:
+            n = new_gen[chrom] = []
+
+        if g[pos:pos+len(rec_ref)] != rec_ref:
+            raise AssertionError(('Reference genome and VCF file disagree at '
+                f'{line[0]} {line[1]} (ref: {g[pos:len(rec_ref)]}, '
+                f'vcf: {rec_ref}).'))
+
+        n.append(g[gen_ctr[chrom]:pos])
+        n.append(rec_alt)
+        gen_ctr[chrom] = pos + len(rec_ref)
+
+    ## Print new genome
+    with open(out_fa, 'w') as fp:
+        for c in CHRS:
+            try:
+                g = new_gen[c]
+                if gen_ctr[c] < len(orig_gen[c]):
+                    g.append(orig_gen[c][gen_ctr[c]:])
+            except KeyError:
+                if c in orig_gen and orig_gen[c]:
+                    g = orig_gen[c]
+                else:
+                    continue
+
+
+            fp.write(chr_header[c])
+            g = ''.join(g)
+            for i in range(0, len(g), 70):
+                fp.write(f'{g[i:i+70]}\n')
+
+
+
 ################################################################################
 def get_args():
     """
@@ -1044,18 +1261,38 @@ def get_args():
 
         return(args)
 
+    ## Make a consensus FASTA file, either from a VCF file or from a ConsDB file
+    if run_mode == 'fa':
+        parser = argparse.ArgumentParser(prog='ConsDB FA',
+            description='Create consensus FASTA file.')
+
+        parser.add_argument('-ref', required=True,
+            help='Reference genome FASTA file.')
+        parser.add_argument('-t', required=True, help='File to transform with.')
+        parser.add_argument('-o', required=True, help='Output file.')
+
+        args = parser.parse_args(sys.argv[2:])
+
+        # Check for VCF file suffix, otherwise assume it's a ConsDB file
+        if re.search('\.vcf(?:\.gz)?$', args.t):
+            args.ft = 'vcf'
+        else:
+            args.ft = 'consdb'
+
+        return(args)
+
 def main():
     try:
         run_mode = sys.argv[1].lower()
     except IndexError:
         raise RuntimeError('No run mode given.')
 
-    if run_mode not in {'parse', 'filter', 'merge', 'cons'}:
-        raise RuntimeError(f'Unknown run mode {run_mode}.')
+    if run_mode not in {'parse', 'filter', 'merge', 'cons', 'fa'}:
+        raise RuntimeError(f'Unknown run mode {sys.argv[1]}.')
     
     args = get_args()
 
-    if run_mode != 'filter':
+    if run_mode not in {'filter', 'fa'}:
         # Convert passed chromosomes argument to a list of chroms to use
         if args.chr == ['all']:
             chrs = CHRS
@@ -1236,6 +1473,13 @@ def main():
         if args.clean:
             for fn in out_fns:
                 os.remove(fn)
+
+    ## Make consensus FASTA file
+    if run_mode == 'fa':
+        if args.ft == 'vcf':
+            vcf_to_fasta(args.t, args.ref, args.o)
+        else:
+            consdb_to_fasta(args.t, args.ref, args.o)
 
 if __name__ == '__main__':
     main()
