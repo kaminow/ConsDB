@@ -770,7 +770,7 @@ class RSCollection:
             self.chr_pos_table[(e.chrom, e.pos)] = [rsidx]
             self.rsid_table[e.rsid] = [rsidx]
 
-    def dump(self, fn, idx_file, c, rsids = ['all'], old_size=0, append=False,
+    def dump(self, fn, idx_file, c, rsids=['all'], old_size=0, append=False,
         chunksize=10000):
         """
         Save entries for the given rsids to the given file.
@@ -1829,6 +1829,8 @@ class RSCollection:
         if fn.split('.')[-1] == 'bz2':
             return(bz2.open(fn, 'rb'))
         elif fn.split('.')[-1] == 'gz':
+            return(gzip.open(fn, 'rb'))
+        elif fn.spliit('.')[-1] == 'bgz':
             return(gzip.open(fn, 'rb'))
 
         return(open(fn, 'r'))

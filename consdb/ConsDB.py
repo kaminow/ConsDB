@@ -430,7 +430,7 @@ def find_rsid_frags(c, fp_in, fns, vcf=True):
     Parameters:
     c: Chromosome
     fp_in: Input file path
-    fns: List of fil fragment names to look for variants in
+    fns: List of file fragment names to look for variants in
     vcf: Indicates if the passed file fragments came from a VCF file
     """
 
@@ -876,7 +876,7 @@ def mp_load_and_save_chr(c, db, fp_db, fp_in, fp_out, store_all=False,
         rsc += db_parse(f'{fp_in}/{fn}', quiet=quiet)
         count += 1
         
-        frag = fn.split('_')[-1]
+        seen_frags.add(fn)
         if db == 'dbsnp':
             write_rsids.update([k for k in rsc.entries.keys() \
                 if rsid_frag_dict[k[0]].issubset(seen_frags)])
@@ -894,13 +894,13 @@ def mp_load_and_save_chr(c, db, fp_db, fp_in, fp_out, store_all=False,
                 if not quiet:
                     print(f'Writing {len(write_rsids)} entries to chromosome '
                         f'{c}...', flush=True)
-                all_size = rsc.dump(save_fn, c, rsids=write_rsids,
+                all_size = rsc.dump(save_fn, idx_file, c, rsids=write_rsids,
                     old_size=all_size, append=True)
                 if not quiet:
                     print(f'Wrote to chromosome {c}.', flush=True)
             if store_maj:
-                maj_size = rsc.get_major().dump(maj_fn, c, rsids=write_rsids,
-                    old_size=maj_size, append=True)
+                maj_size = rsc.get_major().dump(maj_fn, maj_idx,
+                    rsids=write_rsids, old_size=maj_size, append=True)
 
             rsc = rse.RSCollection()
             write_rsids = set()
@@ -1304,10 +1304,10 @@ def main():
     if run_mode == 'parse':
         # Open a manhole for process monitoring
         #  (https://github.com/ionelmc/python-manhole)
-        try:
-            manhole.install()
-        except NameError:
-            pass
+        # try:
+        #     manhole.install()
+        # except NameError:
+        #     pass
 
         # Ensure all needed database files are downloaded (using multiprocessing
         #  if the appropriate command-line argument was passed)
@@ -1321,8 +1321,6 @@ def main():
 
         ## If multiprocessing is enabled
         if args.mp:
-            rsc_queue = None
-
             m = mp.Manager()
             msg_q = m.Queue()
             nproc = min(mp.cpu_count(), args.mp_proc, len(chrs))
