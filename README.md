@@ -1,4 +1,4 @@
-0;136;0c# ConsDB
+# ConsDB
 A Python tool for interfacing with large variant databases and performing consensus genome operations.
 
 Written by Benjamin Kaminow
