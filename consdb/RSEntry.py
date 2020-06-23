@@ -1830,7 +1830,7 @@ class RSCollection:
             return(bz2.open(fn, 'rb'))
         elif fn.split('.')[-1] == 'gz':
             return(gzip.open(fn, 'rb'))
-        elif fn.spliit('.')[-1] == 'bgz':
+        elif fn.split('.')[-1] == 'bgz':
             return(gzip.open(fn, 'rb'))
 
         return(open(fn, 'r'))
