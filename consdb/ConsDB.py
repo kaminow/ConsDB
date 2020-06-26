@@ -828,16 +828,13 @@ def mp_load_and_save_chr(c, db, fp_db, fp_in, fp_out, store_all=False,
             f'{fp_db}/20131219.populations.tsv', quiet)
         vcf = True
     elif db == 'gnomad':
-        db_parse = lambda fn: rse.RSCollection.from_gnomad(fn, quiet)
+        db_parse = lambda fn, quiet: rse.RSCollection.from_gnomad(fn, quiet)
         vcf = True
     else:
         print(f'db: {db}', flush=True)
         raise AssertionError
 
-    if db == 'gnomad':
-        match = [f'chr{c}_frag_exomes_[a-z]+', f'chr{c}_frag_genomes_[a-z]+']
-    else:
-        match = [f'chr{c}_frag_[a-z]+']
+    match = [f'chr{c}_frag_[a-z]+']
     fns = [fn for fn in os.listdir(fp_in) for m in match if re.search(m, fn)]
     n_frags = len(fns)
     # Create dictionary of the last fragment a (chrom, pos) was found in to know

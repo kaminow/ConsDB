@@ -1220,17 +1220,18 @@ class RSCollection:
             except AttributeError:
                 line = line.strip()
 
-                if line[:2] == '##':
-                    if re.search(re_search, line):
-                        try:
-                            p = re.search(id_search, line).group(1)
-                        except AttributeError:
-                            continue
+            if line[:2] == '##':
+                if re.search(re_search, line):
+                    try:
+                        p = re.search(id_search, line).group(1)
+                    except AttributeError:
+                        continue
 
-                        ids.add(p)
-                    continue
-            if type(ids) == set:
+                    ids.add(p)
+                continue
+            if line[0] == '#':
                 ids = list(ids)
+                continue
 
             line_split = line.split('\t')
             c = line_split[0].strip('chr')
@@ -1243,9 +1244,6 @@ class RSCollection:
                 # Use -1 as a placeholder
                 rsids = [-1]
 
-            if len(rsids) == 1:
-                rsids = rsids*len(rec_alts)
-                
             if n % 50000 == 0 and not quiet:
                 print(f'chr {c}: Processed {n} records.', flush=True)
 
@@ -1266,6 +1264,9 @@ class RSCollection:
             if AN == 0:
                 continue
 
+            if len(rsids) == 1:
+                rsids = rsids*len(rec_alts)
+                
             # Build pop_afs dict (only need to do it once for each rec)
             rec_pop_afs = {}
             for p in ids:
