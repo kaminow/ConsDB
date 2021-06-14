@@ -72,6 +72,8 @@ def check_downloads(db, chrs, fp='.', force=False):
         ext = re.escape('.json.bz2')
     elif db == '1000gp':
         # Also need to download index file and pop file
+        # File with sexes:
+        # ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_g1k.ped
         fns = ['1000genomes.sequence.index', '20131219.populations.tsv']
         urls = [('ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/'
             '1000_genomes_project/{}'),
@@ -303,7 +305,7 @@ def consdb_to_fasta(consdb_fn, in_fa, out_fa):
     except AttributeError:
         pass
 
-def filter_vcf_pers(fn_in, fn_out, pers_id, het=None):
+def filter_vcf_pers(fn_in, fn_out, pers_id, het='rand'):
     """
     Filter a VCF file for a given individual.
     Possible choices for het are:
@@ -321,6 +323,8 @@ def filter_vcf_pers(fn_in, fn_out, pers_id, het=None):
         het = int(het)
     except ValueError:
         het = het.lower()
+    except TypeError:
+        het = 'rand'
 
     if het not in {'rand', 0, 1}:
         raise ValueError(f'Bad option for het: {het}')
@@ -1140,7 +1144,7 @@ def get_args():
             help='Directory containing ConsDB files.')
         parser.add_argument('-pop', help='Population to use for filtering.')
         parser.add_argument('-samp', help='Sample ID to use for filtering.')
-        parser.add_argument('-het',
+        parser.add_argument('-het', default='rand',
             help='Option for handling heterozygous variants.')
         parser.add_argument('-log', help='Log file to use for filtering.')
         parser.add_argument('-cons', action='store_true', help=('Making a '
