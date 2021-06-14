@@ -206,12 +206,12 @@ def col_from_db(db, chrs, fp='.', chr_path=None, chr_maj=False, chr_all=False,
             if chr_all:
                 fn = f'{chr_path}/chr{c}_rscol.gz'
                 print(f'Saving chromosome {c}...', flush=True)
-                rsc.dump(fn, c)
+                rsc.dump(fn, None, c)
                 print(f'Chromosome {c} saved.', flush=True)
             if chr_maj:
                 fn = f'{chr_path}/chr{c}_maj.gz'
                 print(f'Saving chromosome {c} major alleles...', flush=True)
-                rsc.get_major().dump(fn, c)
+                rsc.get_major().dump(fn, None, c)
                 print(f'Chromosome {c} major alleles saved.', flush=True)
 
     return(rsc)
@@ -790,11 +790,11 @@ def mp_load_and_save(c, db, fp_in='.', fp_out=None, store_all=False,
     if fp_out:
         if store_all:
             print(f'Saving chromosome {c}...', flush=True)
-            rsc.dump(f'{fp_out}/chr{c}_rscol.gz', c)
+            rsc.dump(f'{fp_out}/chr{c}_rscol.gz', None, c)
             print(f'Chromosome {c} saved.', flush=True)
         if store_maj:
             print(f'Saving chromosome {c} major alleles...', flush=True)
-            rsc.get_major().dump(f'{fp_out}/chr{c}_maj.gz', c)
+            rsc.get_major().dump(f'{fp_out}/chr{c}_maj.gz', None, c)
             print(f'Chromosome {c} major alleles saved.', flush=True)
 
 
@@ -900,7 +900,7 @@ def mp_load_and_save_chr(c, db, fp_db, fp_in, fp_out, store_all=False,
                 if not quiet:
                     print(f'Wrote to chromosome {c}.', flush=True)
             if store_maj:
-                maj_size = rsc.get_major().dump(maj_fn, maj_idx,
+                maj_size = rsc.get_major().dump(maj_fn, maj_idx, c,
                     rsids=write_rsids, old_size=maj_size, append=True)
 
             rsc = rse.RSCollection()
