@@ -95,11 +95,11 @@ def check_downloads(db, chrs, fp='.', force=False):
             '20190312_biallelic_SNV_and_INDEL/{}')
         ext = re.escape('.vcf.gz')
     elif db == 'gnomad':
-        file_base = ['gnomad.genomes.r3.0.sites.chr{}.vcf.bgz']
-        url_base = ('https://storage.googleapis.com/gnomad-public/release/'
-            '3.0/vcf/genomes/{}')
+        file_base = ['gnomad.genomes.v3.1.2.sites.chr{}.vcf.bgz']
+        url_base = ('https://storage.googleapis.com/gcp-public-data--gnomad/'
+            'release/3.1.2/vcf/genomes/{}')
         ext = re.escape('.vcf.bgz')
-    
+
     # Attempt to download using FTP, otherwise use HTTPS
     try:
         if url_base[:3] == 'ftp':
@@ -126,7 +126,7 @@ def check_downloads(db, chrs, fp='.', force=False):
                 continue
             for fn in chr_fns:
                 fn_full = f'{fp}/{fn}'
-                
+
                 print(f'Checking for {fn}...', flush=True)
                 if os.path.isfile(fn_full) and not force:
                     print(f'{fn} already present.', flush=True)
@@ -329,7 +329,7 @@ def filter_vcf_pers(fn_in, fn_out, pers_id, het='rand'):
     if het not in {'rand', 0, 1}:
         raise ValueError(f'Bad option for het: {het}')
 
-    
+
     samp_idx = None
     pos_set = set()
 
@@ -640,7 +640,7 @@ def join_vcfs(fns, fn_out):
         if line.split('\t')[0] == '#CHROM':
             header_lines.append(line)
             break
-    
+
     with open(fn_out, 'w') as fp_out:
         fp_out.write('\n'.join(header_lines) + '\n')
         for fn in fns:
@@ -876,7 +876,7 @@ def mp_load_and_save_chr(c, db, fp_db, fp_in, fp_out, store_all=False,
 
         rsc += db_parse(f'{fp_in}/{fn}', quiet=quiet)
         count += 1
-        
+
         seen_frags.add(fn)
         if db == 'dbsnp':
             write_rsids.update([k for k in rsc.entries.keys() \
@@ -922,7 +922,7 @@ def parse_chr_file(fn):
     chr_idx = np.asarray([c in CHRS for c in chrs])
     for c in chrs[~chr_idx]:
         print('Unknown chromosome {}.'.format(c))
-        
+
     chrs = chrs[chr_idx]
     print('Chromosomes to use: {}'.format(', '.join(chrs)))
 
@@ -1085,7 +1085,7 @@ def get_args():
             'database downloads. Defaults to run path.')
         parser.add_argument('-db_force', action='store_true', help='Whether or '
             'not to force database downloading (overwrite existing files).')
-        parser.add_argument('-db_mp', action='store_true', 
+        parser.add_argument('-db_mp', action='store_true',
             help=('Whether or not to use multiprocessing for downloading.'))
         parser.add_argument('-db_proc', type=int, default=12,
             help='Number of downloads to run concurrently.')
@@ -1180,8 +1180,8 @@ def get_args():
             help=('Format used to find files to merge. Use {} as a wildcard, '
                 'with one for chromosome, and the second for rscol/maj '
                 '(if desired).'))
-        
-        ## Multiprocessing arguments       
+
+        ## Multiprocessing arguments
         parser.add_argument('-mp', action='store_true',
             help='Use multiprocessing.')
         parser.add_argument('-mp_proc', type=int, default=12,
@@ -1241,7 +1241,7 @@ def get_args():
             help='Delete individual chromosome VCF files when done.')
         parser.add_argument('-v', action='store_true', help='Load verbosely.')
 
-        ## Multiprocessing arguments       
+        ## Multiprocessing arguments
         parser.add_argument('-mp', action='store_true',
             help='Use multiprocessing.')
         parser.add_argument('-mp_proc', type=int, default=12,
@@ -1290,7 +1290,7 @@ def main():
 
     if run_mode not in {'parse', 'filter', 'merge', 'cons', 'fa'}:
         raise RuntimeError(f'Unknown run mode {sys.argv[1]}.')
-    
+
     args = get_args()
 
     if run_mode not in {'filter', 'fa'}:
