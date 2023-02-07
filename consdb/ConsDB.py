@@ -95,9 +95,9 @@ def check_downloads(db, chrs, fp='.', force=False):
             '20190312_biallelic_SNV_and_INDEL/{}')
         ext = re.escape('.vcf.gz')
     elif db == 'gnomad':
-        file_base = ['gnomad.genomes.v3.1.2.sites.chr{}.vcf.bgz']
+        file_base = ['gnomad.genomes.v3.1.sites.chr{}.vcf.bgz']
         url_base = ('https://storage.googleapis.com/gcp-public-data--gnomad/'
-            'release/3.1.2/vcf/genomes/{}')
+            'release/3.1/vcf/genomes/{}')
         ext = re.escape('.vcf.bgz')
 
     # Attempt to download using FTP, otherwise use HTTPS
